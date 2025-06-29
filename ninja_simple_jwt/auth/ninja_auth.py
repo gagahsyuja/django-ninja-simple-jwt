@@ -1,5 +1,6 @@
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth import get_user_model
 from django.http import HttpRequest
 from jwt import PyJWTError
 from ninja.errors import AuthenticationError
@@ -9,6 +10,7 @@ from ninja.security.http import DecodeError
 from ninja_simple_jwt.jwt.token_operations import TokenTypes, decode_token
 from ninja_simple_jwt.settings import ninja_simple_jwt_settings
 
+User = get_user_model()
 
 class HttpJwtAuth(HttpBearer):
     def authenticate(self, request: HttpRequest, token: str) -> bool:
@@ -19,9 +21,19 @@ class HttpJwtAuth(HttpBearer):
         except PyJWTError as e:
             raise AuthenticationError(e)
 
-        self.set_token_claims_to_user(request.user, access_token)
+        user_id = access_token.get("user_id")
 
-        return True
+        if not user_id:
+            raise AuthenticationError("User id not found")
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            raise AuthenticationError("User not found")
+        
+        self.set_token_claims_to_user(user, access_token)
+
+        return user
 
     @staticmethod
     def set_token_claims_to_user(user: AbstractBaseUser | AnonymousUser, token: dict) -> None:
