@@ -13,3 +13,4 @@ pylint==3.0.2
 pylint-django==2.5.5
 tox==4.11
 wheel>=0.4
+setuptools==80.9.0
