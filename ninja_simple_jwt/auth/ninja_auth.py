@@ -14,26 +14,22 @@ User = get_user_model()
 
 class HttpJwtAuth(HttpBearer):
     def authenticate(self, request: HttpRequest, token: str) -> bool:
-        token = self.decode_authorization(request.headers["Authorization"])
 
         try:
             access_token = decode_token(token, token_type=TokenTypes.ACCESS, verify=True)
         except PyJWTError as e:
             raise AuthenticationError(e)
 
-        user_id = access_token.get("user_id")
-
-        if not user_id:
-            raise AuthenticationError("User id not found")
-
         try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            raise AuthenticationError("User not found")
-        
+            user = User.objects.get(id=access_token.get("user_id"))
+        except User.DoesNotExist as e:
+            raise AuthenticationError(e)
+
+        request.user = user
+
         self.set_token_claims_to_user(user, access_token)
 
-        return user
+        return True
 
     @staticmethod
     def set_token_claims_to_user(user: AbstractBaseUser | AnonymousUser, token: dict) -> None:
